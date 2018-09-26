@@ -1,2 +1,6 @@
 # Territory Partitioning Prototype
-More to come
+
+Install with
+```bash
+$ pip install sqterritory
+```
