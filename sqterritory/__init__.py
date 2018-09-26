@@ -1,1 +1,1 @@
-from territory import MinCostFlow
+from .territory import MinCostFlow
