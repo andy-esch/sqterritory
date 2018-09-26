@@ -117,11 +117,11 @@ class MinCostFlow:
         # Set up the graph so we can extract and initialize the node labels.
         # For each iteration, we're going to sort all our data by their origin
         # label assignments in order to properly index our nodes.
-        temp_target_data = self.targets.sort_values('labels').reset_index(drop=True)
+        self.targets = self.targets.sort_values('labels').reset_index(drop=True)
 
         # Add target nodes
         g = nx.DiGraph()
-        g.add_nodes_from(temp_target_data['target_id'], demand=-1)
+        g.add_nodes_from(self.targets['target_id'], demand=-1)
 
         # Add origin nodes
         for idx in demand:
@@ -131,8 +131,8 @@ class MinCostFlow:
         # each med center node.
         dict_M = {
             i: (
-                temp_target_data[temp_target_data['target_id'] == i]['labels'].values
-                if i in temp_target_data.target_id.values
+                self.targets[self.targets['target_id'] == i]['labels'].values
+                if i in self.targets.target_id.values
                 else np.array([demand[i]])
             )
             for i in g.nodes
