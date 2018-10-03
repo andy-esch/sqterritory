@@ -7,6 +7,8 @@ import geopandas as gpd
 import networkx as nx
 from geopy import distance
 
+logger = logging.basicConfig(level=logging.DEBUG)
+
 # distance functions
 def calc_distance(lng1, lat1, lng2, lat2, arctype='great_circle'):
     if arctype =='great_circle':
@@ -47,16 +49,14 @@ class MinCostFlow:
         self.context = context
 
         self.origin_table = origin_table
-        print(q.format(t=origin_table))
+        logging.info(q.format(t=origin_table))
         self.origins = self.context.query(q.format(t=origin_table))
         self.origins['origin_id']  = self.origins.index
 
         self.target_table = target_table
         self.targets = self.context.query(q.format(t=target_table))
         self.targets['target_id'] = self.origins.index.max() + self.targets.index
-
-        self.targets_proc = self.targets.copy()
-        self.targets_proc['value_demanded_norm'] = standardize(self.targets_proc[demand_col].values)
+        self.targets['value_demanded_norm'] = standardize(self.targets[demand_col].values)
 
         self.nearest_targets = self._get_target_nearest()
 
@@ -69,15 +69,6 @@ class MinCostFlow:
 
     def _get_target_nearest(self):
         """Get nearest target for each origin"""
-        # unary union of the gpd2 geomtries
-        # TODO: find a better way to set pts3
-        # pts3 = rep_home_geo.geometry.unary_union
-        # def nearest_rep(point, pts=pts3):
-        #      # find the nearest point and return the corresponding Place value
-        #     nearestpt = rep_home_geo.geometry == nearest_points(point,pts3)[1]
-        #     return rep_home_geo[nearestpt].index.values[0]
-        #
-        # nearest_rep_vect = np.vectorize(nearest_rep)
         reps_query = """
              SELECT DISTINCT ON(g2.cartodb_id)
                  g1.cartodb_id As origin_id,
@@ -102,6 +93,7 @@ class MinCostFlow:
 
         # update with new information
         self.targets['labels'] = init_labels
+        logging.info('nearest targets retrieved')
 
         return nearest_reps
 
@@ -137,14 +129,11 @@ class MinCostFlow:
             )
             for i in g.nodes
         }
+        logging.info('Graph and demand dictionary created')
         return dict_M, demand
 
-    def constrained_kmeans(self, maxiter=100, fixedprec=1e9):
-        """Min Cost Flow
-
-        Returns:
-          M
-        """
+    def calc(self, maxiter=100, fixedprec=1e9):
+        """Min Cost Flow"""
         source_data_holder = []
         N = self.targets.shape[0]
         K = self.origins.shape[0]
@@ -156,20 +145,16 @@ class MinCostFlow:
         cost_holder = []
         itercnt = 0
 
-        cluster_centers = self.targets[['lng', 'lat']]
-
         while True:
             itercnt += 1
-            print(itercnt)
-
-            # Sort df by the labels
-            origins_sorted = self.targets_proc.sort_values('labels').reset_index(drop=True)
+            logging.info(f'Iter count: {itercnt}')
 
             # Setup the graph
             g = nx.DiGraph()
 
-            # Supply of 1 (i.e. demand =-1) means that it can only be connected to one node
-            g.add_nodes_from(self.targets_proc['target_id'], demand=-1) # points
+            self.targets = self.targets.sort_values('labels').reset_index(drop=True)
+            # Supply of 1 (i.e. demand = -1) means that it can only be connected to one node
+            g.add_nodes_from(self.targets['target_id'], demand=-1) # points
 
             for idx in self.nearest_targets.origin_id:
                 g.add_node(int(idx), demand=demand[idx])
@@ -190,7 +175,7 @@ class MinCostFlow:
 
             # Create the in-cluster sales and calculate the total volume of sales generated
             # TODO: rename this to something more generic, like cluster_demanded
-            cluster_sales = self.targets_proc.groupby('labels').sum()['value_demanded'][:, np.newaxis]
+            cluster_sales = self.targets.groupby('labels').sum()['value_demanded'][:, np.newaxis]
             D = cluster_sales.shape[1]
 
             cost_sales = abs(
@@ -248,12 +233,13 @@ class MinCostFlow:
             p = {}
 
             for i in list(g.nodes)[:-1]:
-                # Sorts all the items in the dictionary and picks the cluster with label =1
+                # Sorts all the items in the dictionary and picks the cluster
+                # with label = 1
                 p = sorted(f[i].items(), key=lambda x: x[1])[-1][0]
                 M_new[i] = p
 
             # Update the new labels in the df
-            origins_sorted['labels'] = self.targets.apply(lambda x: M_new[x['target_id']], axis=1)
+            self.targets['labels'] = self.targets.apply(lambda x: M_new[x['target_id']], axis=1)
 
             # Set the capacity for all edges
             # TO DO: Figure how/whether we need to properly set a capacity for the edges.
@@ -268,21 +254,21 @@ class MinCostFlow:
                     'dict_graph': M,
                     'min_cost_flow': f,
                     'nxgraph': g,
-                    'model_labels': origins_sorted,
+                    'model_labels': self.targets,
                     'costs': cost_holder
                 }
                 return True
 
             M = M_new
 
-            source_data_holder.append(origins_sorted['labels'].values)
+            source_data_holder.append(self.targets['labels'].values)
             if maxiter is not None and itercnt >= maxiter:
                 # Max iterations reached
                 self.results = {
                     'dict_graph': M,
                     'min_cost_flow': f,
                     'nxgraph': g,
-                    'model_labels': origins_sorted,
+                    'model_labels': self.targets,
                     'costs': cost_holder
                 }
                 return True
