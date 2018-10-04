@@ -12,6 +12,8 @@ from itertools import product, combinations
 
 from utils import flatten_list
 
+logger = logging.basicConfig(level=logging.DEBUG)
+
 class BSTCut:
     def __init__(self, context, geo_table, distance_table, distance_col, index_col=None, o_index_col=None, d_index_col=None):
 
