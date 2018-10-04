@@ -10,7 +10,7 @@ from shapely.geometry import Point, Polygon
 from math import fabs
 from itertools import product, combinations
 
-from utils import flatten_list
+from .utils import flatten_list
 
 logger = logging.basicConfig(level=logging.DEBUG)
 
