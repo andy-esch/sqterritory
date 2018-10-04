@@ -101,7 +101,7 @@ class BSTCut:
 
     def calc(self, min_lcd=60*60, n_stop_split=2):
         mst_network, full_network, points, contiguity = self._network_from_df(self.geo, self.dist_dict, self.distance_col)
-        result = self._partition(mst_network, self.dist_dict, self.distance_col, min_lcd, n_stop_split)
+        result = self._partition(mst_network, self.dist_dict, self.distance_col, lcd_threh=min_lcd, n_thresh=n_stop_split)
         flat_result = list(flatten_list(result))
         geo_result  = self.geo.copy().assign(cluster_id=0 , cluster_lsd=0)
         for index, region in enumerate(flat_result):
