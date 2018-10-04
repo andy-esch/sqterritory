@@ -88,8 +88,9 @@ class BSTCut:
 
     def _partition(self, graph, distance, distance_col, lcd_thresh, n_thresh, stopping_limit = 40, level=0):
         lcd = self._longest_crossing_distance(graph, distance, distance_col)
-        logging.info(f'considering level: {level}, no. of nodes in graph is {len(graph.nodes)}, lcd: {lcd}')
+        logging.info(f'considering level: {level}, no. of nodes in graph is {len(graph.nodes)}, lcd: {lcd}, lcd_thresh: {lcd_thresh}')
         if (lcd < lcd_thresh or len(graph.nodes)<=n_thresh) or (level>stopping_limit):
+
             return graph
         else:
             cut = self._find_optimal_cut(graph, distance, distance_col)
