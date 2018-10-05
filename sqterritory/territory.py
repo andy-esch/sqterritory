@@ -1,3 +1,6 @@
+"""Balanced territory assignments using Min Cost Flow
+Modified from code written by Wenfei Xu, 2018
+"""
 import logging
 import time
 import numpy as np
