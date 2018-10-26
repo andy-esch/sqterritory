@@ -2,7 +2,7 @@
 Modified from code written by Wenfei Xu, 2018
 """
 import logging
-import time
+import datetime
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
@@ -56,6 +56,7 @@ class MinCostFlow:
         self.origins = self.context.query(q.format(t=origin_table))
         self.origins['origin_id']  = self.origins.index
 
+        self.demand_col = demand_col
         self.target_table = target_table
         self.targets = self.context.query(q.format(t=target_table))
         self.targets['target_id'] = self.origins.index.max() + self.targets.index
@@ -178,7 +179,7 @@ class MinCostFlow:
 
             # Create the in-cluster sales and calculate the total volume of sales generated
             # TODO: rename this to something more generic, like cluster_demanded
-            cluster_sales = self.targets.groupby('labels').sum()['value_demanded'][:, np.newaxis]
+            cluster_sales = self.targets.groupby('labels').sum()[self.demand_col][:, np.newaxis]
             D = cluster_sales.shape[1]
 
             cost_sales = abs(
@@ -292,7 +293,7 @@ class MinCostFlow:
                 'origin_lng': self.origins.reindex(baseline_labels)['lng'].values,
                 'origin_lat': self.origins.reindex(baseline_labels)['lat'].values,
                 'target_id': self.results['model_labels'].target_id,
-                'sales': self.results['model_labels'].value_demanded,
+                'sales': self.results['model_labels'][self.demand_col].values,
                 'labels': baseline_labels
             }
         )
@@ -310,12 +311,13 @@ class MinCostFlow:
                 'origin_lng': self.origins.reindex(mcf_labels)['lng'].values,
                 'origin_lat': self.origins.reindex(mcf_labels)['lat'].values,
                 'target_id': self.results['model_labels'].target_id,
-                'sales': self.results['model_labels'].value_demanded,
+                'sales': self.results['model_labels'][self.demand_col].values,
                 'labels': mcf_labels
             },
             index=self.results['model_labels'].target_id
         )
-        out_table = 'mincostflow_{}'.format(str(time.time())[-5:])
+        now = datetime.datetime.now()
+        out_table = 'mincostflow_{}'.format(now.strftime("%Y_%m_%d_%H_%M_%S"))
         logging.info('Writing output to {}'.format(out_table))
         self.context.write(outcomes2.reset_index(drop=True), out_table)
         logging.info('Table {} written to CARTO'.format(out_table))
