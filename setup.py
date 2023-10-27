@@ -12,7 +12,9 @@ REQUIRES = [
     'pandas>=0.22.0',
     'networkx>=2.2',
     'geopy>=1.17.0',
-    'geopandas>=0.3.0'
+    'geopandas>=0.3.0',
+    'pysal>=1.14.3',
+    'shapely>=1.6.2'
 ]
 
 PACKAGE_DATA = {
